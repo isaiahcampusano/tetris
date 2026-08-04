@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A fast, browser-based falling-block puzzle game." />
+    <title>Neon Stack</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <header class="game-header">
+        <div>
+          <p class="eyebrow">Arcade mode</p>
+          <h1>Neon Stack</h1>
+        </div>
+        <p class="tagline">Fit the pieces. Clear the grid. Keep climbing.</p>
+      </header>
+
+      <section class="game-layout" aria-label="Neon Stack game">
+        <div class="board-frame">
+          <canvas
+            id="board"
+            width="300"
+            height="600"
+            tabindex="0"
+            aria-label="10 by 20 game board"
+          ></canvas>
+          <div id="game-over" class="game-over" role="status" aria-live="assertive" aria-hidden="true" hidden>
+            <strong>Game over</strong>
+            <span>Press R or restart to try again.</span>
+          </div>
+        </div>
+
+        <aside class="side-panel" aria-label="Game statistics and controls">
+          <section class="stats-card" aria-label="Game statistics">
+            <div>
+              <span>Score</span>
+              <strong id="score-display">0</strong>
+            </div>
+            <div>
+              <span>Level</span>
+              <strong id="level-display">1</strong>
+            </div>
+            <div>
+              <span>Lines</span>
+              <strong id="lines-display">0</strong>
+            </div>
+          </section>
+
+          <section class="preview-card">
+            <h2>Next piece</h2>
+            <canvas id="next-piece" width="150" height="150" aria-label="Next piece preview"></canvas>
+          </section>
+
+          <button id="restart-button" type="button">Restart game</button>
+
+          <section class="controls-card">
+            <h2>Controls</h2>
+            <dl>
+              <div><dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Move</dd></div>
+              <div><dt><kbd>↓</kbd></dt><dd>Soft drop</dd></div>
+              <div><dt><kbd>↑</kbd></dt><dd>Rotate</dd></div>
+              <div><dt><kbd>Space</kbd></dt><dd>Hard drop</dd></div>
+              <div><dt><kbd>R</kbd></dt><dd>Restart</dd></div>
+            </dl>
+            <p>WASD works too.</p>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <script type="module" src="src/game.js"></script>
+  </body>
+</html>
