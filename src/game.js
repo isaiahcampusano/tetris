@@ -10,6 +10,9 @@ import { getRandomPiece, resetPieceBag, rotate as rotatePiece } from "./pieces.j
 import { setupControls } from "./controls.js";
 
 export const LINE_CLEAR_POINTS = Object.freeze([0, 100, 300, 500, 800]);
+export const SOFT_DROP_INTERVAL = 40;
+export const HORIZONTAL_DAS_DELAY = 170;
+export const HORIZONTAL_ARR_INTERVAL = 40;
 
 export function getLineClearScore(rowsCleared, level) {
   return (LINE_CLEAR_POINTS[rowsCleared] ?? 0) * level;
@@ -34,6 +37,13 @@ const state = {
   running: false,
   dropInterval: getDropInterval(1),
   lastDropTime: 0,
+  softDropHeld: false,
+  moveLeftHeld: false,
+  moveRightHeld: false,
+  horizontalMoveDirection: 0,
+  horizontalMoveStartTime: null,
+  lastHorizontalMoveTime: null,
+  lastSoftDropTime: null,
   animationFrameId: null,
 };
 
@@ -132,6 +142,13 @@ export function restart() {
   state.running = true;
   state.dropInterval = getDropInterval(1);
   state.lastDropTime = 0;
+  state.softDropHeld = false;
+  state.moveLeftHeld = false;
+  state.moveRightHeld = false;
+  state.horizontalMoveDirection = 0;
+  state.horizontalMoveStartTime = null;
+  state.lastHorizontalMoveTime = null;
+  state.lastSoftDropTime = null;
   state.animationFrameId = null;
 
   if (elements) {
@@ -166,6 +183,54 @@ export function softDrop() {
   }
 }
 
+export function setSoftDropHeld(isHeld, initialAction = softDrop) {
+  if (state.softDropHeld === isHeld) {
+    return;
+  }
+
+  state.softDropHeld = isHeld;
+  state.lastSoftDropTime = null;
+
+  if (isHeld) {
+    initialAction();
+  }
+}
+
+function setHorizontalMoveHeld(direction, isHeld, initialAction) {
+  const heldKey = direction < 0 ? "moveLeftHeld" : "moveRightHeld";
+
+  if (state[heldKey] === isHeld) {
+    return;
+  }
+
+  state[heldKey] = isHeld;
+
+  if (isHeld) {
+    state.horizontalMoveDirection = direction;
+    state.horizontalMoveStartTime = null;
+    state.lastHorizontalMoveTime = null;
+    initialAction();
+    return;
+  }
+
+  if (state.horizontalMoveDirection !== direction) {
+    return;
+  }
+
+  const fallbackDirection = state.moveLeftHeld ? -1 : state.moveRightHeld ? 1 : 0;
+  state.horizontalMoveDirection = fallbackDirection;
+  state.horizontalMoveStartTime = null;
+  state.lastHorizontalMoveTime = null;
+}
+
+export function setMoveLeftHeld(isHeld, initialAction = moveLeft) {
+  setHorizontalMoveHeld(-1, isHeld, initialAction);
+}
+
+export function setMoveRightHeld(isHeld, initialAction = moveRight) {
+  setHorizontalMoveHeld(1, isHeld, initialAction);
+}
+
 export function hardDrop() {
   if (!state.running) {
     return;
@@ -196,11 +261,46 @@ export const gameActions = Object.freeze({
   moveLeft,
   moveRight,
   softDrop,
+  setMoveLeftHeld,
+  setMoveRightHeld,
+  setSoftDropHeld,
   hardDrop,
   rotate,
   restart,
   isGameOver,
 });
+
+export function processHeldInput(timestamp, actions = { moveLeft, moveRight, softDrop }) {
+  if (state.softDropHeld) {
+    if (state.lastSoftDropTime === null) {
+      state.lastSoftDropTime = timestamp;
+    } else if (timestamp - state.lastSoftDropTime >= SOFT_DROP_INTERVAL) {
+      actions.softDrop();
+      state.lastSoftDropTime = timestamp;
+    }
+  }
+
+  if (state.horizontalMoveDirection === 0) {
+    return;
+  }
+
+  if (state.horizontalMoveStartTime === null) {
+    state.horizontalMoveStartTime = timestamp;
+    state.lastHorizontalMoveTime = timestamp;
+    return;
+  }
+
+  if (timestamp - state.horizontalMoveStartTime < HORIZONTAL_DAS_DELAY) {
+    return;
+  }
+
+  if (timestamp - state.lastHorizontalMoveTime < HORIZONTAL_ARR_INTERVAL) {
+    return;
+  }
+
+  (state.horizontalMoveDirection < 0 ? actions.moveLeft : actions.moveRight)();
+  state.lastHorizontalMoveTime = timestamp;
+}
 
 function drawCell(context, x, y, color, cellSize) {
   const inset = 1;
@@ -341,6 +441,8 @@ function gameLoop(timestamp) {
   if (state.lastDropTime === 0) {
     state.lastDropTime = timestamp;
   }
+
+  processHeldInput(timestamp);
 
   if (timestamp - state.lastDropTime >= state.dropInterval) {
     automaticDrop();
