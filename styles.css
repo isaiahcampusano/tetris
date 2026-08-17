@@ -174,7 +174,8 @@ h1 {
   text-transform: uppercase;
 }
 
-#next-piece {
+#next-piece,
+#hold-piece {
   display: block;
   width: min(100%, 9rem);
   height: auto;

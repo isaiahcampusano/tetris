@@ -7,6 +7,7 @@ const GAME_KEYS = new Set([
   "d",
   "s",
   "w",
+  "c",
   "r",
   " ",
   "Spacebar",
@@ -53,6 +54,7 @@ export function setupControls(gameActions, target = document) {
     const actionsByKey = {
       ArrowUp: gameActions.rotate,
       w: gameActions.rotate,
+      c: gameActions.hold,
     };
 
     if (key === "r") {

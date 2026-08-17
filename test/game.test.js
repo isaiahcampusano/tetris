@@ -1,11 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+import { createBoard } from "../src/board.js";
+import { createPiece } from "../src/pieces.js";
+
 import {
   HORIZONTAL_ARR_INTERVAL,
   HORIZONTAL_DAS_DELAY,
+  LOCK_DELAY,
   SOFT_DROP_INTERVAL,
+  advanceLockState,
   getDropInterval,
+  getGhostPosition,
+  getHoldResult,
   getLevel,
   getLineClearScore,
   processHeldInput,
@@ -33,6 +40,102 @@ test("drop interval accelerates by level and never drops below 100ms", () => {
   assert.equal(getDropInterval(10), 325);
   assert.equal(getDropInterval(13), 100);
   assert.equal(getDropInterval(99), 100);
+});
+
+test("ghost position lands on the flat floor without mutating the piece", () => {
+  const board = createBoard();
+  const piece = createPiece("O");
+  const originalPiece = structuredClone(piece);
+
+  assert.equal(getGhostPosition(piece, board), 18);
+  assert.deepEqual(piece, originalPiece);
+});
+
+test("ghost position lands on stacked blocks", () => {
+  const board = createBoard();
+  const piece = createPiece("O");
+  board[17][piece.x] = "#fff";
+
+  assert.equal(getGhostPosition(piece, board), 15);
+});
+
+test("ghost position stays put when the piece is already resting", () => {
+  const board = createBoard();
+  const piece = { ...createPiece("O"), y: 18 };
+
+  assert.equal(getGhostPosition(piece, board), piece.y);
+});
+
+test("holding into an empty slot consumes next and stores the current type", () => {
+  const currentPiece = createPiece("T");
+  const nextPiece = createPiece("I");
+  const result = getHoldResult(currentPiece, null, nextPiece);
+
+  assert.equal(result.currentPiece, nextPiece);
+  assert.equal(result.holdPieceType, "T");
+  assert.equal(result.consumesNextPiece, true);
+});
+
+test("swapping with hold rebuilds the piece at its spawn position", () => {
+  const currentPiece = { ...createPiece("T"), x: 7, y: 12, rotation: 2 };
+  const result = getHoldResult(currentPiece, "L", createPiece("I"));
+
+  assert.equal(result.holdPieceType, "T");
+  assert.equal(result.currentPiece.type, "L");
+  assert.equal(result.currentPiece.x, 3);
+  assert.equal(result.currentPiece.y, 0);
+  assert.equal(result.currentPiece.rotation, 0);
+  assert.equal(result.consumesNextPiece, false);
+});
+
+test("hold is blocked after use until the next piece is allowed to hold", () => {
+  const result = getHoldResult(createPiece("T"), "L", createPiece("I"), false);
+
+  assert.equal(result, null);
+});
+
+test("lock delay starts on landing and settles only after the grace period", () => {
+  const landed = advanceLockState({
+    isResting: true,
+    isLanded: false,
+    lockTimer: 0,
+    elapsed: 16,
+  });
+  const almostLocked = advanceLockState({
+    isResting: true,
+    isLanded: landed.isLanded,
+    lockTimer: landed.lockTimer,
+    elapsed: LOCK_DELAY - 1,
+  });
+  const locked = advanceLockState({
+    isResting: true,
+    isLanded: almostLocked.isLanded,
+    lockTimer: almostLocked.lockTimer,
+    elapsed: 1,
+  });
+
+  assert.deepEqual(landed, { isLanded: true, lockTimer: 0, shouldLock: false });
+  assert.equal(almostLocked.shouldLock, false);
+  assert.equal(locked.shouldLock, true);
+});
+
+test("a landed move resets lock delay and leaving the surface clears it", () => {
+  const reset = advanceLockState({
+    isResting: true,
+    isLanded: true,
+    lockTimer: 420,
+    elapsed: 16,
+    resetRequested: true,
+  });
+  const unsupported = advanceLockState({
+    isResting: false,
+    isLanded: true,
+    lockTimer: 420,
+    elapsed: 16,
+  });
+
+  assert.deepEqual(reset, { isLanded: true, lockTimer: 0, shouldLock: false });
+  assert.deepEqual(unsupported, { isLanded: false, lockTimer: 0, shouldLock: false });
 });
 
 test("held soft drop repeats on the game clock at a fixed cadence", () => {

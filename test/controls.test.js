@@ -47,6 +47,7 @@ function createActions(calls, isGameOver = () => true) {
     setSoftDropHeld: (held) => calls.push(["soft", held]),
     hardDrop: () => calls.push(["hard"]),
     rotate: () => calls.push(["rotate"]),
+    hold: () => calls.push(["hold"]),
     restart: () => calls.push(["restart"]),
     isGameOver,
   };
@@ -62,6 +63,7 @@ test("game keys prevent browser defaults and call their matching actions", () =>
   assert.equal(target.press("D"), true);
   assert.equal(target.press("s"), true);
   assert.equal(target.press("w"), true);
+  assert.equal(target.press("c"), true);
   assert.equal(target.press(" ", "Space"), true);
   assert.equal(target.press("r"), true);
   assert.deepEqual(calls, [
@@ -69,6 +71,7 @@ test("game keys prevent browser defaults and call their matching actions", () =>
     ["right", true],
     ["soft", true],
     ["rotate"],
+    ["hold"],
     ["hard"],
     ["restart"],
   ]);
@@ -109,7 +112,9 @@ test("single-shot actions ignore native key repeat", () => {
 
   target.press("w");
   target.press("w", "", true);
+  target.press("c");
+  target.press("c", "", true);
   target.press(" ", "Space");
   target.press(" ", "Space", true);
-  assert.deepEqual(calls, [["rotate"], ["hard"]]);
+  assert.deepEqual(calls, [["rotate"], ["hold"], ["hard"]]);
 });

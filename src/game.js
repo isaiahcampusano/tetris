@@ -6,13 +6,14 @@ import {
   isValidPosition,
   lockPiece,
 } from "./board.js";
-import { getRandomPiece, resetPieceBag, rotate as rotatePiece } from "./pieces.js";
+import { createPiece, getRandomPiece, resetPieceBag, rotate as rotatePiece } from "./pieces.js";
 import { setupControls } from "./controls.js";
 
 export const LINE_CLEAR_POINTS = Object.freeze([0, 100, 300, 500, 800]);
 export const SOFT_DROP_INTERVAL = 40;
 export const HORIZONTAL_DAS_DELAY = 170;
 export const HORIZONTAL_ARR_INTERVAL = 40;
+export const LOCK_DELAY = 500;
 
 export function getLineClearScore(rowsCleared, level) {
   return (LINE_CLEAR_POINTS[rowsCleared] ?? 0) * level;
@@ -24,6 +25,56 @@ export function getLevel(linesCleared) {
 
 export function getDropInterval(level) {
   return Math.max(100, 1000 - (level - 1) * 75);
+}
+
+export function getGhostPosition(piece, board) {
+  let ghostY = piece.y;
+
+  while (isValidPosition(piece.shape, piece.x, ghostY + 1, board)) {
+    ghostY += 1;
+  }
+
+  return ghostY;
+}
+
+export function isRestingOnSurface(piece, board) {
+  return !isValidPosition(piece.shape, piece.x, piece.y + 1, board);
+}
+
+export function getHoldResult(currentPiece, holdPieceType, nextPiece, canHold = true) {
+  if (!canHold || !currentPiece) {
+    return null;
+  }
+
+  return {
+    currentPiece: holdPieceType === null ? nextPiece : createPiece(holdPieceType),
+    holdPieceType: currentPiece.type,
+    consumesNextPiece: holdPieceType === null,
+  };
+}
+
+export function advanceLockState({
+  isResting,
+  isLanded,
+  lockTimer,
+  elapsed,
+  lockDelay = LOCK_DELAY,
+  resetRequested = false,
+}) {
+  if (!isResting) {
+    return { isLanded: false, lockTimer: 0, shouldLock: false };
+  }
+
+  if (!isLanded || resetRequested) {
+    return { isLanded: true, lockTimer: 0, shouldLock: false };
+  }
+
+  const nextLockTimer = lockTimer + Math.max(0, elapsed);
+  return {
+    isLanded: true,
+    lockTimer: nextLockTimer,
+    shouldLock: nextLockTimer >= lockDelay,
+  };
 }
 
 const state = {
@@ -44,6 +95,13 @@ const state = {
   horizontalMoveStartTime: null,
   lastHorizontalMoveTime: null,
   lastSoftDropTime: null,
+  holdPieceType: null,
+  canHold: true,
+  lockTimer: 0,
+  lockDelay: LOCK_DELAY,
+  isLanded: false,
+  lockResetRequested: false,
+  lastFrameTime: null,
   animationFrameId: null,
 };
 
@@ -56,6 +114,7 @@ function getElements() {
     level: document.getElementById("level-display"),
     lines: document.getElementById("lines-display"),
     nextPiece: document.getElementById("next-piece"),
+    holdPiece: document.getElementById("hold-piece"),
     restartButton: document.getElementById("restart-button"),
     gameOver: document.getElementById("game-over"),
   };
@@ -67,6 +126,22 @@ function assertRequiredElements(domElements) {
       throw new Error(`Missing required game element: ${name}`);
     }
   }
+}
+
+function resetLockState() {
+  state.lockTimer = 0;
+  state.isLanded = false;
+  state.lockResetRequested = false;
+}
+
+function resetLockAfterSuccessfulAction(wasLanded) {
+  if (!wasLanded) {
+    return;
+  }
+
+  state.lockTimer = 0;
+  state.isLanded = isRestingOnSurface(state.currentPiece, state.board);
+  state.lockResetRequested = state.isLanded;
 }
 
 function move(dx, dy) {
@@ -81,8 +156,10 @@ function move(dx, dy) {
     return false;
   }
 
+  const wasLanded = state.isLanded;
   state.currentPiece.x = nextX;
   state.currentPiece.y = nextY;
+  resetLockAfterSuccessfulAction(wasLanded);
   return true;
 }
 
@@ -90,6 +167,7 @@ function spawnNextPiece() {
   state.currentPiece = state.nextPiece;
   state.nextPiece = getRandomPiece();
   state.lastDropTime = typeof performance === "undefined" ? 0 : performance.now();
+  resetLockState();
 
   if (!isValidPosition(state.currentPiece.shape, state.currentPiece.x, state.currentPiece.y, state.board)) {
     finishGame();
@@ -105,15 +183,14 @@ function settleCurrentPiece() {
   state.linesCleared += result.rowsCleared;
   state.level = getLevel(state.linesCleared);
   state.dropInterval = getDropInterval(state.level);
+  state.canHold = true;
 
   spawnNextPiece();
   render();
 }
 
 function automaticDrop() {
-  if (!move(0, 1)) {
-    settleCurrentPiece();
-  }
+  move(0, 1);
 }
 
 function finishGame() {
@@ -149,6 +226,11 @@ export function restart() {
   state.horizontalMoveStartTime = null;
   state.lastHorizontalMoveTime = null;
   state.lastSoftDropTime = null;
+  state.holdPieceType = null;
+  state.canHold = true;
+  state.lockDelay = LOCK_DELAY;
+  state.lastFrameTime = null;
+  resetLockState();
   state.animationFrameId = null;
 
   if (elements) {
@@ -178,8 +260,6 @@ export function softDrop() {
 
   if (move(0, 1)) {
     state.score += 1;
-  } else {
-    settleCurrentPiece();
   }
 }
 
@@ -245,12 +325,52 @@ export function hardDrop() {
   settleCurrentPiece();
 }
 
+export function hold() {
+  const result = getHoldResult(
+    state.currentPiece,
+    state.holdPieceType,
+    state.nextPiece,
+    state.running && state.canHold,
+  );
+
+  if (!result) {
+    return;
+  }
+  state.holdPieceType = result.holdPieceType;
+
+  if (result.consumesNextPiece) {
+    spawnNextPiece();
+  } else {
+    state.currentPiece = result.currentPiece;
+    state.lastDropTime = typeof performance === "undefined" ? 0 : performance.now();
+    resetLockState();
+
+    if (!isValidPosition(
+      state.currentPiece.shape,
+      state.currentPiece.x,
+      state.currentPiece.y,
+      state.board,
+    )) {
+      finishGame();
+    }
+  }
+
+  state.canHold = false;
+  render();
+}
+
 export function rotate() {
   if (!state.running || !state.currentPiece) {
     return;
   }
 
+  const previousPiece = state.currentPiece;
+  const wasLanded = state.isLanded;
   state.currentPiece = rotatePiece(state.currentPiece, state.board);
+
+  if (state.currentPiece !== previousPiece) {
+    resetLockAfterSuccessfulAction(wasLanded);
+  }
 }
 
 export function isGameOver() {
@@ -265,6 +385,7 @@ export const gameActions = Object.freeze({
   setMoveRightHeld,
   setSoftDropHeld,
   hardDrop,
+  hold,
   rotate,
   restart,
   isGameOver,
@@ -300,6 +421,29 @@ export function processHeldInput(timestamp, actions = { moveLeft, moveRight, sof
 
   (state.horizontalMoveDirection < 0 ? actions.moveLeft : actions.moveRight)();
   state.lastHorizontalMoveTime = timestamp;
+}
+
+function processLockDelay(elapsed) {
+  if (!state.currentPiece) {
+    return;
+  }
+
+  const nextLockState = advanceLockState({
+    isResting: isRestingOnSurface(state.currentPiece, state.board),
+    isLanded: state.isLanded,
+    lockTimer: state.lockTimer,
+    elapsed,
+    lockDelay: state.lockDelay,
+    resetRequested: state.lockResetRequested,
+  });
+
+  state.isLanded = nextLockState.isLanded;
+  state.lockTimer = nextLockState.lockTimer;
+  state.lockResetRequested = false;
+
+  if (nextLockState.shouldLock) {
+    settleCurrentPiece();
+  }
 }
 
 function drawCell(context, x, y, color, cellSize) {
@@ -341,6 +485,30 @@ function drawGrid(context, width, height, cellSize) {
   }
 }
 
+function drawGhostPiece(context, piece, ghostY, cellSize) {
+  const inset = 3;
+  context.save();
+  context.globalAlpha = 0.45;
+  context.strokeStyle = piece.color;
+  context.lineWidth = 2;
+
+  piece.shape.forEach((row, shapeY) => {
+    row.forEach((occupied, shapeX) => {
+      const y = ghostY + shapeY;
+      if (occupied && y >= 0) {
+        context.strokeRect(
+          (piece.x + shapeX) * cellSize + inset,
+          y * cellSize + inset,
+          cellSize - inset * 2,
+          cellSize - inset * 2,
+        );
+      }
+    });
+  });
+
+  context.restore();
+}
+
 function drawBoard() {
   if (!elements?.board || !state.currentPiece) {
     return;
@@ -358,6 +526,15 @@ function drawBoard() {
       }
     });
   });
+
+  if (state.running) {
+    drawGhostPiece(
+      context,
+      state.currentPiece,
+      getGhostPosition(state.currentPiece, state.board),
+      cellSize,
+    );
+  }
 
   state.currentPiece.shape.forEach((row, shapeY) => {
     row.forEach((occupied, shapeX) => {
@@ -393,30 +570,42 @@ function getOccupiedBounds(shape) {
   };
 }
 
-function drawNextPiece() {
-  if (!elements?.nextPiece || !state.nextPiece) {
+function drawPreviewPiece(canvas, piece) {
+  if (!canvas) {
     return;
   }
 
-  const canvas = elements.nextPiece;
   const context = canvas.getContext("2d");
   const previewCells = 5;
   const cellSize = canvas.width / previewCells;
   context.clearRect(0, 0, canvas.width, canvas.height);
 
-  const bounds = getOccupiedBounds(state.nextPiece.shape);
+  if (!piece) {
+    return;
+  }
+
+  const bounds = getOccupiedBounds(piece.shape);
   const pieceWidth = bounds.maxX - bounds.minX + 1;
   const pieceHeight = bounds.maxY - bounds.minY + 1;
   const offsetX = (previewCells - pieceWidth) / 2 - bounds.minX;
   const offsetY = (previewCells - pieceHeight) / 2 - bounds.minY;
 
-  state.nextPiece.shape.forEach((row, y) => {
+  piece.shape.forEach((row, y) => {
     row.forEach((occupied, x) => {
       if (occupied) {
-        drawCell(context, x + offsetX, y + offsetY, state.nextPiece.color, cellSize);
+        drawCell(context, x + offsetX, y + offsetY, piece.color, cellSize);
       }
     });
   });
+}
+
+function drawNextPiece() {
+  drawPreviewPiece(elements?.nextPiece, state.nextPiece);
+}
+
+function drawHoldPiece() {
+  const heldPiece = state.holdPieceType === null ? null : createPiece(state.holdPieceType);
+  drawPreviewPiece(elements?.holdPiece, heldPiece);
 }
 
 function render() {
@@ -426,6 +615,7 @@ function render() {
 
   drawBoard();
   drawNextPiece();
+  drawHoldPiece();
   elements.score.textContent = String(state.score);
   elements.level.textContent = String(state.level);
   elements.lines.textContent = String(state.linesCleared);
@@ -442,12 +632,17 @@ function gameLoop(timestamp) {
     state.lastDropTime = timestamp;
   }
 
+  const elapsed = state.lastFrameTime === null ? 0 : timestamp - state.lastFrameTime;
+  state.lastFrameTime = timestamp;
+
   processHeldInput(timestamp);
 
   if (timestamp - state.lastDropTime >= state.dropInterval) {
     automaticDrop();
     state.lastDropTime = timestamp;
   }
+
+  processLockDelay(elapsed);
 
   render();
   state.animationFrameId = requestAnimationFrame(gameLoop);
