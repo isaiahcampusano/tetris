@@ -13,6 +13,14 @@ import {
   spawnRowClearParticles,
   updateParticles,
 } from "./particles.js";
+import {
+  addHighScore,
+  clearAllScores,
+  formatDate,
+  getHighScores,
+  getLastGamertag,
+  qualifiesForLeaderboard,
+} from "./highScores.js";
 
 export const LINE_CLEAR_POINTS = Object.freeze([0, 100, 300, 500, 800]);
 export const SOFT_DROP_INTERVAL = 40;
@@ -123,6 +131,15 @@ function getElements() {
     holdPiece: document.getElementById("hold-piece"),
     restartButton: document.getElementById("restart-button"),
     gameOver: document.getElementById("game-over"),
+    leaderboardList: document.getElementById("leaderboard-list"),
+    leaderboardStatus: document.getElementById("leaderboard-status"),
+    clearScoresButton: document.getElementById("clear-scores-button"),
+    highScoreModal: document.getElementById("high-score-modal"),
+    highScoreForm: document.getElementById("high-score-form"),
+    highScoreSummary: document.getElementById("high-score-summary"),
+    gamertagInput: document.getElementById("gamertag-input"),
+    highScoreError: document.getElementById("high-score-error"),
+    saveScoreButton: document.getElementById("save-score-button"),
   };
 }
 
@@ -212,7 +229,100 @@ function automaticDrop() {
   move(0, 1);
 }
 
-function finishGame() {
+export function prepareHighScoreModal(domElements, score, level) {
+  domElements.highScoreSummary.textContent = `${score.toLocaleString()} points · Level ${level}`;
+  domElements.gamertagInput.value = getLastGamertag();
+  domElements.highScoreError.hidden = true;
+  domElements.highScoreError.textContent = "";
+  domElements.highScoreModal.showModal();
+  domElements.gamertagInput.focus();
+  domElements.gamertagInput.select();
+}
+
+function showHighScoreModal() {
+  prepareHighScoreModal(elements, state.score, state.level);
+}
+
+function closeHighScoreModal() {
+  if (elements?.highScoreModal.open) {
+    elements.highScoreModal.close();
+  }
+}
+
+async function renderLeaderboard(leaderboard = null) {
+  elements.leaderboardStatus.hidden = false;
+  elements.leaderboardStatus.textContent = "Loading leaderboard…";
+
+  try {
+    const scores = leaderboard ?? await getHighScores();
+    elements.leaderboardList.replaceChildren();
+
+    if (scores.length === 0) {
+      elements.leaderboardStatus.textContent = "No scores yet. Claim the first spot.";
+      return;
+    }
+
+    scores.slice(0, 10).forEach((entry) => {
+      const item = document.createElement("li");
+      item.innerHTML = `
+        <span class="leaderboard-player">
+          <span class="leaderboard-rank">${entry.rank}</span>
+          <strong class="leaderboard-name"></strong>
+        </span>
+        <span class="leaderboard-score">${entry.score.toLocaleString()}</span>
+        <time datetime="${entry.date}">${formatDate(entry.date)}</time>
+      `;
+      item.querySelector(".leaderboard-name").textContent = entry.gamertag;
+      elements.leaderboardList.append(item);
+    });
+
+    elements.leaderboardStatus.hidden = true;
+  } catch {
+    elements.leaderboardList.replaceChildren();
+    elements.leaderboardStatus.textContent = "Couldn't load leaderboard. The game still works offline.";
+  }
+}
+
+function setupHighScoreForm() {
+  elements.highScoreForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    elements.saveScoreButton.disabled = true;
+    elements.highScoreError.hidden = true;
+
+    try {
+      const leaderboard = await addHighScore(
+        elements.gamertagInput.value,
+        state.score,
+        state.level,
+        state.linesCleared,
+      );
+      closeHighScoreModal();
+      await renderLeaderboard(leaderboard);
+    } catch (error) {
+      elements.highScoreError.textContent = error.message;
+      elements.highScoreError.hidden = false;
+    } finally {
+      elements.saveScoreButton.disabled = false;
+    }
+  });
+}
+
+function setupClearScores() {
+  elements.clearScoresButton.addEventListener("click", async () => {
+    elements.clearScoresButton.disabled = true;
+    try {
+      await clearAllScores();
+      await renderLeaderboard([]);
+    } catch {
+      elements.leaderboardStatus.hidden = false;
+      elements.leaderboardStatus.textContent = "Couldn't clear scores. Please try again.";
+    } finally {
+      elements.clearScoresButton.disabled = false;
+    }
+  });
+}
+
+async function finishGame() {
   state.gameOver = true;
   state.running = false;
   state.particles = [];
@@ -220,6 +330,12 @@ function finishGame() {
   if (elements) {
     elements.gameOver.hidden = false;
     elements.gameOver.setAttribute("aria-hidden", "false");
+
+    if (qualifiesForLeaderboard(state.score)) {
+      showHighScoreModal();
+    } else {
+      await renderLeaderboard();
+    }
   }
 }
 
@@ -253,6 +369,7 @@ export function restart() {
   resetLockState();
   state.animationFrameId = null;
   state.particles = [];
+  closeHighScoreModal();
 
   if (elements) {
     elements.gameOver.hidden = true;
@@ -673,12 +790,15 @@ function gameLoop(timestamp) {
   state.animationFrameId = requestAnimationFrame(gameLoop);
 }
 
-function initialize() {
+async function initialize() {
   elements = getElements();
   assertRequiredElements(elements);
   setupControls(gameActions);
+  setupHighScoreForm();
+  setupClearScores();
   elements.restartButton.addEventListener("click", restart);
   restart();
+  await renderLeaderboard();
 }
 
 if (typeof document !== "undefined") {

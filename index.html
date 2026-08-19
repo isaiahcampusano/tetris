@@ -60,6 +60,21 @@
 
           <button id="restart-button" type="button">Restart game</button>
 
+          <section class="leaderboard-card" aria-labelledby="leaderboard-title">
+            <div class="card-heading">
+              <div>
+                <p class="eyebrow">Global top 10</p>
+                <h2 id="leaderboard-title">Leaderboard</h2>
+              </div>
+              <button id="clear-scores-button" class="text-button" type="button">Clear scores</button>
+            </div>
+            <div class="leaderboard-columns" aria-hidden="true">
+              <span>Rank / Player</span><span>Score</span><span>Date</span>
+            </div>
+            <ol id="leaderboard-list" class="leaderboard-list"></ol>
+            <p id="leaderboard-status" class="leaderboard-status" role="status">Loading leaderboard…</p>
+          </section>
+
           <section class="controls-card">
             <h2>Controls</h2>
             <dl>
@@ -75,6 +90,25 @@
         </aside>
       </section>
     </main>
+
+    <dialog id="high-score-modal" class="high-score-modal" aria-labelledby="high-score-title">
+      <form id="high-score-form" method="dialog">
+        <p class="eyebrow">Leaderboard unlocked</p>
+        <h2 id="high-score-title">Enter your gamertag</h2>
+        <p id="high-score-summary" class="high-score-summary"></p>
+        <label for="gamertag-input">Gamertag</label>
+        <input
+          id="gamertag-input"
+          name="gamertag"
+          type="text"
+          maxlength="20"
+          autocomplete="nickname"
+          placeholder="Player"
+        />
+        <p id="high-score-error" class="form-error" role="alert" hidden></p>
+        <button id="save-score-button" type="submit">Save score</button>
+      </form>
+    </dialog>
 
     <script type="module" src="src/game.js"></script>
   </body>

@@ -16,10 +16,35 @@ import {
   getLevel,
   getLineClearScore,
   processHeldInput,
+  prepareHighScoreModal,
   setMoveLeftHeld,
   setMoveRightHeld,
   setSoftDropHeld,
 } from "../src/game.js";
+
+test("qualifying-score modal is prefilled with the last gamertag", (t) => {
+  const originalLocalStorage = globalThis.localStorage;
+  globalThis.localStorage = { getItem: () => "LastPlayer" };
+  t.after(() => { globalThis.localStorage = originalLocalStorage; });
+  const calls = [];
+  const domElements = {
+    highScoreSummary: { textContent: "" },
+    gamertagInput: {
+      value: "",
+      focus: () => calls.push("focus"),
+      select: () => calls.push("select"),
+    },
+    highScoreError: { hidden: false, textContent: "old error" },
+    highScoreModal: { showModal: () => calls.push("show") },
+  };
+
+  prepareHighScoreModal(domElements, 50_000, 4);
+
+  assert.equal(domElements.highScoreSummary.textContent, "50,000 points · Level 4");
+  assert.equal(domElements.gamertagInput.value, "LastPlayer");
+  assert.equal(domElements.highScoreError.hidden, true);
+  assert.deepEqual(calls, ["show", "focus", "select"]);
+});
 
 test("line clear scoring uses the standard values at the current level", () => {
   assert.equal(getLineClearScore(1, 1), 100);
