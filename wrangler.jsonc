@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "neon-stack-leaderboard",
+  "main": "worker/src/index.js",
+  "compatibility_date": "2026-08-19",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "neon-stack-leaderboard",
+      "database_id": "bc498d14-75ab-4c64-be7f-65d77ce2c924",
+      "migrations_dir": "worker/migrations"
+    }
+  ]
+}

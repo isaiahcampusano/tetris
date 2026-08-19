@@ -18,6 +18,10 @@ persistent disk (for example, `/var/data/high-scores.json` on Render).
 
 Run the automated checks with `npm test`.
 
+The live GitHub Pages site uses the free Cloudflare Worker and D1 database
+configured in `wrangler.jsonc`. The Worker source is in `worker/src/index.js`,
+and its schema is in `worker/migrations/0001_create_scores.sql`.
+
 ## Leaderboard API
 
 - `GET /api/scores` returns the ranked leaderboard.
