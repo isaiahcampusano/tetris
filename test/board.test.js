@@ -60,6 +60,8 @@ test("clearFullRows removes complete rows and shifts remaining cells down", () =
 
   const result = clearFullRows(board);
   assert.equal(result.rowsCleared, 2);
+  assert.deepEqual(result.clearedRowIndices, [18, 19]);
+  assert.deepEqual(result.clearedRows, [board[18], board[19]]);
   assert.equal(result.board.length, BOARD_HEIGHT);
   assert.equal(result.board[19][0], "marker");
   assert.ok(result.board[0].every((cell) => cell === null));

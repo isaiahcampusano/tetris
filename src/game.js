@@ -8,6 +8,11 @@ import {
 } from "./board.js";
 import { createPiece, getRandomPiece, resetPieceBag, rotate as rotatePiece } from "./pieces.js";
 import { setupControls } from "./controls.js";
+import {
+  renderParticles,
+  spawnRowClearParticles,
+  updateParticles,
+} from "./particles.js";
 
 export const LINE_CLEAR_POINTS = Object.freeze([0, 100, 300, 500, 800]);
 export const SOFT_DROP_INTERVAL = 40;
@@ -103,6 +108,7 @@ const state = {
   lockResetRequested: false,
   lastFrameTime: null,
   animationFrameId: null,
+  particles: [],
 };
 
 let elements = null;
@@ -178,6 +184,19 @@ function settleCurrentPiece() {
   state.board = lockPiece(state.currentPiece, state.board);
 
   const result = clearFullRows(state.board);
+
+  if (result.rowsCleared > 0 && elements?.board) {
+    const cellSize = elements.board.width / BOARD_WIDTH;
+    spawnRowClearParticles(
+      result.clearedRowIndices,
+      BOARD_WIDTH,
+      BOARD_HEIGHT,
+      cellSize,
+      state.particles,
+      result.clearedRows,
+    );
+  }
+
   state.board = result.board;
   state.score += getLineClearScore(result.rowsCleared, state.level);
   state.linesCleared += result.rowsCleared;
@@ -196,6 +215,7 @@ function automaticDrop() {
 function finishGame() {
   state.gameOver = true;
   state.running = false;
+  state.particles = [];
 
   if (elements) {
     elements.gameOver.hidden = false;
@@ -232,6 +252,7 @@ export function restart() {
   state.lastFrameTime = null;
   resetLockState();
   state.animationFrameId = null;
+  state.particles = [];
 
   if (elements) {
     elements.gameOver.hidden = true;
@@ -550,6 +571,8 @@ function drawBoard() {
       }
     });
   });
+
+  renderParticles(context, state.particles);
 }
 
 function getOccupiedBounds(shape) {
@@ -634,6 +657,8 @@ function gameLoop(timestamp) {
 
   const elapsed = state.lastFrameTime === null ? 0 : timestamp - state.lastFrameTime;
   state.lastFrameTime = timestamp;
+
+  updateParticles(state.particles, elapsed);
 
   processHeldInput(timestamp);
 

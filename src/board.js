@@ -75,16 +75,28 @@ export function lockPiece(piece, board) {
  */
 export function clearFullRows(board) {
   if (!Array.isArray(board) || board.length === 0) {
-    return { board: [], rowsCleared: 0 };
+    return { board: [], rowsCleared: 0, clearedRowIndices: [], clearedRows: [] };
   }
 
   const width = board[0].length;
+  const clearedRowIndices = [];
+  const clearedRows = [];
+
+  board.forEach((row, index) => {
+    if (row.every((cell) => cell !== null)) {
+      clearedRowIndices.push(index);
+      clearedRows.push([...row]);
+    }
+  });
+
   const remainingRows = board.filter((row) => row.some((cell) => cell === null));
-  const rowsCleared = board.length - remainingRows.length;
+  const rowsCleared = clearedRowIndices.length;
   const emptyRows = Array.from({ length: rowsCleared }, () => Array(width).fill(null));
 
   return {
     board: [...emptyRows, ...remainingRows.map((row) => [...row])],
     rowsCleared,
+    clearedRowIndices,
+    clearedRows,
   };
 }
