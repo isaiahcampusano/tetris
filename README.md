@@ -13,6 +13,9 @@ Open `http://localhost:3000`. The same server hosts the static game and the
 shared `/api/scores` leaderboard API, with entries persisted in
 `server/data/high-scores.json`.
 
+Set `HIGH_SCORE_DATA_FILE` to an absolute path when the server uses a mounted
+persistent disk (for example, `/var/data/high-scores.json` on Render).
+
 Run the automated checks with `npm test`.
 
 ## Leaderboard API

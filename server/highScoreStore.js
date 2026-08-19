@@ -7,13 +7,14 @@ export const MAX_SCORES = 20;
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const defaultDataFile = path.join(moduleDirectory, "data", "high-scores.json");
+const configuredDataFile = process.env.HIGH_SCORE_DATA_FILE || defaultDataFile;
 
 function rankScores(scores) {
   return scores.map((entry, index) => ({ rank: index + 1, ...entry }));
 }
 
 export class HighScoreStore {
-  constructor(dataFile = defaultDataFile, maxScores = MAX_SCORES) {
+  constructor(dataFile = configuredDataFile, maxScores = MAX_SCORES) {
     this.dataFile = dataFile;
     this.maxScores = maxScores;
   }
