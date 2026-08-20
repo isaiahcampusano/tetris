@@ -1,5 +1,8 @@
 https://isaiahcampusano.github.io/tetris/
 
+<img width="786" height="910" alt="image" src="https://github.com/user-attachments/assets/2938bcde-df35-4642-a7a3-da151f52f2c8" />
+
+
 ## Local development
 
 Install dependencies and start the combined game and leaderboard server:
