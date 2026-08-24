@@ -3,13 +3,13 @@ import { isValidPosition } from "./board.js";
 export const TETROMINO_TYPES = Object.freeze(["I", "O", "T", "S", "Z", "J", "L"]);
 
 export const PIECE_COLORS = Object.freeze({
-  I: "#22d3ee",
-  O: "#facc15",
-  T: "#c084fc",
-  S: "#4ade80",
-  Z: "#fb7185",
-  J: "#60a5fa",
-  L: "#fb923c",
+  I: "#00f3ff",
+  O: "#ffe600",
+  T: "#b800ff",
+  S: "#39ff14",
+  Z: "#ff3300",
+  J: "#0055ff",
+  L: "#ff6a00",
 });
 
 const BASE_SHAPES = Object.freeze({

@@ -203,6 +203,11 @@ function settleCurrentPiece() {
   const result = clearFullRows(state.board);
 
   if (result.rowsCleared > 0 && elements?.board) {
+    elements.board.classList.remove("flash");
+    void elements.board.offsetWidth;
+    elements.board.classList.add("flash");
+    setTimeout(() => elements?.board?.classList.remove("flash"), 260);
+
     const cellSize = elements.board.width / BOARD_WIDTH;
     spawnRowClearParticles(
       result.clearedRowIndices,
@@ -586,8 +591,12 @@ function processLockDelay(elapsed) {
 
 function drawCell(context, x, y, color, cellSize) {
   const inset = 1;
+  context.save();
+  context.shadowColor = color;
+  context.shadowBlur = 10;
   context.fillStyle = color;
   context.fillRect(x * cellSize + inset, y * cellSize + inset, cellSize - inset * 2, cellSize - inset * 2);
+  context.restore();
 
   const highlight = context.createLinearGradient(
     x * cellSize,
@@ -603,9 +612,9 @@ function drawCell(context, x, y, color, cellSize) {
 }
 
 function drawGrid(context, width, height, cellSize) {
-  context.fillStyle = "#090d1a";
+  context.fillStyle = "#060612";
   context.fillRect(0, 0, width * cellSize, height * cellSize);
-  context.strokeStyle = "rgba(148, 163, 184, 0.1)";
+  context.strokeStyle = "rgba(0, 243, 255, 0.1)";
   context.lineWidth = 1;
 
   for (let column = 0; column <= width; column += 1) {
