@@ -1,7 +1,3 @@
-https://isaiahcampusano.github.io/tetris/
-
-<img width="786" height="910" alt="image" src="https://github.com/user-attachments/assets/2938bcde-df35-4642-a7a3-da151f52f2c8" />
-
 
 ## Local development
 
@@ -34,3 +30,6 @@ and its schema is in `worker/migrations/0001_create_scores.sql`.
 The clear endpoint is intentionally unauthenticated for this hobby project.
 Anyone who can reach the API can erase the leaderboard, so authentication or
 an admin-only control should be added before using it for a higher-traffic site.
+
+
+https://isaiahcampusano.github.io/tetris/
