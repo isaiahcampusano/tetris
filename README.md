@@ -1,5 +1,8 @@
 <img width="853" height="903" alt="image" src="https://github.com/user-attachments/assets/a1adb842-5b32-4c2c-8d7b-78778634672e" />
 
+https://isaiahcampusano.github.io/tetris/
+
+---
 ## Local development
 
 Install dependencies and start the combined game and leaderboard server:
@@ -32,5 +35,3 @@ The clear endpoint is intentionally unauthenticated for this hobby project.
 Anyone who can reach the API can erase the leaderboard, so authentication or
 an admin-only control should be added before using it for a higher-traffic site.
 
-
-https://isaiahcampusano.github.io/tetris/
