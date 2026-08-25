@@ -11,6 +11,7 @@ const GAME_KEYS = new Set([
   "r",
   " ",
   "Spacebar",
+  "Escape",
 ]);
 
 /**
@@ -38,6 +39,15 @@ export function setupControls(gameActions, target = document) {
     event.preventDefault();
 
     if (event.repeat) {
+      return;
+    }
+
+    if (key === "Escape") {
+      gameActions.togglePause();
+      return;
+    }
+
+    if (gameActions.isPaused()) {
       return;
     }
 

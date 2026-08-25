@@ -127,7 +127,8 @@ h1 {
 #board.flash { animation: line-clear-flash 260ms ease-out; }
 #board:focus-visible { outline: 3px solid var(--neon-yellow); outline-offset: -5px; }
 
-.game-over {
+.game-over,
+.pause-overlay {
   position: absolute;
   z-index: 2;
   inset: 0;
@@ -140,7 +141,7 @@ h1 {
   backdrop-filter: blur(5px);
 }
 
-.game-over[hidden] { display: none; }
+.game-over[hidden], .pause-overlay[hidden] { display: none; }
 
 .game-over strong {
   color: var(--neon-magenta);
@@ -149,7 +150,14 @@ h1 {
   text-transform: uppercase;
 }
 
-.game-over span, .controls-card dd, .controls-card p, .leaderboard-status { color: var(--muted); }
+.pause-overlay strong {
+  color: var(--neon-cyan);
+  font-size: clamp(1.8rem, 7vw, 3.3rem);
+  text-shadow: 0 0 12px var(--neon-cyan), 0 0 28px var(--neon-cyan);
+  text-transform: uppercase;
+}
+
+.game-over span, .pause-overlay span, .controls-card dd, .controls-card p, .leaderboard-status { color: var(--muted); }
 .side-panel { display: grid; gap: 1rem; }
 
 .stats-card,
