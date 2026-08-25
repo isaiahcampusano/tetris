@@ -162,6 +162,18 @@ test("hold is blocked after use until the next piece is allowed to hold", () => 
   assert.equal(result, null);
 });
 
+test("hold is blocked once the piece has landed on the stack", () => {
+  const result = getHoldResult(createPiece("T"), "L", createPiece("I"), true, true);
+
+  assert.equal(result, null);
+});
+
+test("hold still works while the piece is falling, before it lands", () => {
+  const result = getHoldResult(createPiece("T"), "L", createPiece("I"), true, false);
+
+  assert.notEqual(result, null);
+});
+
 test("lock delay starts on landing and settles only after the grace period", () => {
   const landed = advanceLockState({
     isResting: true,

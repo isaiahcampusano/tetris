@@ -54,8 +54,14 @@ export function isRestingOnSurface(piece, board) {
   return !isValidPosition(piece.shape, piece.x, piece.y + 1, board);
 }
 
-export function getHoldResult(currentPiece, holdPieceType, nextPiece, canHold = true) {
-  if (!canHold || !currentPiece) {
+export function getHoldResult(
+  currentPiece,
+  holdPieceType,
+  nextPiece,
+  canHold = true,
+  isLanded = false,
+) {
+  if (!canHold || !currentPiece || isLanded) {
     return null;
   }
 
@@ -487,6 +493,7 @@ export function hold() {
     state.holdPieceType,
     state.nextPiece,
     state.running && state.canHold,
+    state.isLanded,
   );
 
   if (!result) {
@@ -795,6 +802,7 @@ function drawNextPiece() {
 function drawHoldPiece() {
   const heldPiece = state.holdPieceType === null ? null : createPiece(state.holdPieceType);
   drawPreviewPiece(elements?.holdPiece, heldPiece);
+  elements?.holdPiece?.classList.toggle("hold-locked", state.isLanded);
 }
 
 function render() {
