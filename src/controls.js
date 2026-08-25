@@ -14,6 +14,11 @@ const GAME_KEYS = new Set([
   "Escape",
 ]);
 
+function isTypingTarget(target) {
+  const tag = target?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || target?.isContentEditable;
+}
+
 /**
  * Connect keyboard controls to a game controller without putting game rules here.
  * Returns a cleanup function, which is useful if the game is embedded elsewhere.
@@ -29,6 +34,10 @@ export function setupControls(gameActions, target = document) {
   };
 
   function handleKeydown(event) {
+    if (isTypingTarget(event.target)) {
+      return;
+    }
+
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     const isSpace = event.code === "Space" || key === " " || key === "Spacebar";
 
@@ -78,6 +87,10 @@ export function setupControls(gameActions, target = document) {
   }
 
   function handleKeyup(event) {
+    if (isTypingTarget(event.target)) {
+      return;
+    }
+
     const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
     const action = heldActionsByKey[key];
 
