@@ -15,12 +15,55 @@ import {
   getHoldResult,
   getLevel,
   getLineClearScore,
+  hardDrop,
+  isGameOver,
   processHeldInput,
   prepareHighScoreModal,
+  isPaused,
+  restart,
   setMoveLeftHeld,
   setMoveRightHeld,
   setSoftDropHeld,
+  togglePause,
 } from "../src/game.js";
+
+test("restart starts unpaused and pause toggles only during an active game", () => {
+  restart();
+  assert.equal(isPaused(), false);
+
+  togglePause();
+  assert.equal(isPaused(), true);
+
+  togglePause();
+  assert.equal(isPaused(), false);
+
+  restart();
+  assert.equal(isPaused(), false);
+});
+
+test("pausing clears held input and cannot be enabled after game over", () => {
+  const calls = [];
+  restart();
+  setMoveLeftHeld(true, () => {});
+
+  togglePause();
+  togglePause();
+  processHeldInput(10_000, {
+    moveLeft: () => calls.push("left"),
+    moveRight: () => calls.push("right"),
+    softDrop: () => calls.push("soft"),
+  });
+  assert.deepEqual(calls, []);
+
+  for (let drops = 0; drops < 100 && !isGameOver(); drops += 1) {
+    hardDrop();
+  }
+  assert.equal(isGameOver(), true);
+  togglePause();
+  assert.equal(isPaused(), false);
+
+  restart();
+});
 
 test("qualifying-score modal is prefilled with the last gamertag", (t) => {
   const originalLocalStorage = globalThis.localStorage;

@@ -99,6 +99,7 @@ const state = {
   linesCleared: 0,
   gameOver: false,
   running: false,
+  paused: false,
   dropInterval: getDropInterval(1),
   lastDropTime: 0,
   softDropHeld: false,
@@ -131,6 +132,7 @@ function getElements() {
     holdPiece: document.getElementById("hold-piece"),
     restartButton: document.getElementById("restart-button"),
     gameOver: document.getElementById("game-over"),
+    pauseOverlay: document.getElementById("pause-overlay"),
     leaderboardList: document.getElementById("leaderboard-list"),
     leaderboardStatus: document.getElementById("leaderboard-status"),
     clearScoresButton: document.getElementById("clear-scores-button"),
@@ -157,6 +159,16 @@ function resetLockState() {
   state.lockResetRequested = false;
 }
 
+function clearHeldInput() {
+  state.softDropHeld = false;
+  state.moveLeftHeld = false;
+  state.moveRightHeld = false;
+  state.horizontalMoveDirection = 0;
+  state.horizontalMoveStartTime = null;
+  state.lastHorizontalMoveTime = null;
+  state.lastSoftDropTime = null;
+}
+
 function resetLockAfterSuccessfulAction(wasLanded) {
   if (!wasLanded) {
     return;
@@ -168,7 +180,7 @@ function resetLockAfterSuccessfulAction(wasLanded) {
 }
 
 function move(dx, dy) {
-  if (!state.running || !state.currentPiece) {
+  if (!state.running || state.paused || !state.currentPiece) {
     return false;
   }
 
@@ -358,15 +370,10 @@ export function restart() {
   state.linesCleared = 0;
   state.gameOver = false;
   state.running = true;
+  state.paused = false;
   state.dropInterval = getDropInterval(1);
   state.lastDropTime = 0;
-  state.softDropHeld = false;
-  state.moveLeftHeld = false;
-  state.moveRightHeld = false;
-  state.horizontalMoveDirection = 0;
-  state.horizontalMoveStartTime = null;
-  state.lastHorizontalMoveTime = null;
-  state.lastSoftDropTime = null;
+  clearHeldInput();
   state.holdPieceType = null;
   state.canHold = true;
   state.lockDelay = LOCK_DELAY;
@@ -379,6 +386,8 @@ export function restart() {
   if (elements) {
     elements.gameOver.hidden = true;
     elements.gameOver.setAttribute("aria-hidden", "true");
+    elements.pauseOverlay.hidden = true;
+    elements.pauseOverlay.setAttribute("aria-hidden", "true");
   }
 
   render();
@@ -397,7 +406,7 @@ export function moveRight() {
 }
 
 export function softDrop() {
-  if (!state.running) {
+  if (!state.running || state.paused) {
     return;
   }
 
@@ -455,7 +464,7 @@ export function setMoveRightHeld(isHeld, initialAction = moveRight) {
 }
 
 export function hardDrop() {
-  if (!state.running) {
+  if (!state.running || state.paused) {
     return;
   }
 
@@ -469,6 +478,10 @@ export function hardDrop() {
 }
 
 export function hold() {
+  if (!state.running || state.paused) {
+    return;
+  }
+
   const result = getHoldResult(
     state.currentPiece,
     state.holdPieceType,
@@ -503,7 +516,7 @@ export function hold() {
 }
 
 export function rotate() {
-  if (!state.running || !state.currentPiece) {
+  if (!state.running || state.paused || !state.currentPiece) {
     return;
   }
 
@@ -520,6 +533,31 @@ export function isGameOver() {
   return state.gameOver;
 }
 
+export function isPaused() {
+  return state.paused;
+}
+
+export function togglePause() {
+  if (!state.running || state.gameOver) {
+    return;
+  }
+
+  state.paused = !state.paused;
+  clearHeldInput();
+
+  if (!state.paused) {
+    state.lastDropTime = typeof performance === "undefined" ? 0 : performance.now();
+    state.lastFrameTime = null;
+  }
+
+  if (elements) {
+    elements.pauseOverlay.hidden = !state.paused;
+    elements.pauseOverlay.setAttribute("aria-hidden", String(!state.paused));
+  }
+
+  render();
+}
+
 export const gameActions = Object.freeze({
   moveLeft,
   moveRight,
@@ -532,6 +570,8 @@ export const gameActions = Object.freeze({
   rotate,
   restart,
   isGameOver,
+  isPaused,
+  togglePause,
 });
 
 export function processHeldInput(timestamp, actions = { moveLeft, moveRight, softDrop }) {
@@ -774,6 +814,12 @@ function gameLoop(timestamp) {
   if (!state.running) {
     state.animationFrameId = null;
     render();
+    return;
+  }
+
+  if (state.paused) {
+    render();
+    state.animationFrameId = requestAnimationFrame(gameLoop);
     return;
   }
 

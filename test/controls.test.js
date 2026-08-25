@@ -40,7 +40,7 @@ class FakeEventTarget {
   }
 }
 
-function createActions(calls, isGameOver = () => true) {
+function createActions(calls, isGameOver = () => true, isPaused = () => false) {
   return {
     setMoveLeftHeld: (held) => calls.push(["left", held]),
     setMoveRightHeld: (held) => calls.push(["right", held]),
@@ -50,6 +50,8 @@ function createActions(calls, isGameOver = () => true) {
     hold: () => calls.push(["hold"]),
     restart: () => calls.push(["restart"]),
     isGameOver,
+    isPaused,
+    togglePause: () => calls.push(["pause"]),
   };
 }
 
@@ -117,4 +119,26 @@ test("single-shot actions ignore native key repeat", () => {
   target.press(" ", "Space");
   target.press(" ", "Space", true);
   assert.deepEqual(calls, [["rotate"], ["hold"], ["hard"]]);
+});
+
+test("Escape prevents browser defaults and toggles pause only once", () => {
+  const calls = [];
+  const target = new FakeEventTarget();
+  setupControls(createActions(calls), target);
+
+  assert.equal(target.press("Escape"), true);
+  assert.equal(target.press("Escape", "", true), true);
+  assert.deepEqual(calls, [["pause"]]);
+});
+
+test("gameplay keydown actions are ignored while paused but Escape can resume", () => {
+  const calls = [];
+  const target = new FakeEventTarget();
+  setupControls(createActions(calls, () => false, () => true), target);
+
+  assert.equal(target.press("ArrowLeft"), true);
+  assert.equal(target.press("w"), true);
+  assert.equal(target.press(" ", "Space"), true);
+  assert.equal(target.press("Escape"), true);
+  assert.deepEqual(calls, [["pause"]]);
 });

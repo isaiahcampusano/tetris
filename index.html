@@ -38,6 +38,17 @@
             <strong>Game over</strong>
             <span>Press R or restart to try again.</span>
           </div>
+          <div
+            id="pause-overlay"
+            class="pause-overlay"
+            role="status"
+            aria-live="polite"
+            aria-hidden="true"
+            hidden
+          >
+            <strong>Paused</strong>
+            <span>Press ESC to resume.</span>
+          </div>
         </div>
 
         <aside class="side-panel" aria-label="Game statistics and controls">
@@ -91,6 +102,7 @@
               <div><dt><kbd>↑</kbd></dt><dd>Rotate</dd></div>
               <div><dt><kbd>C</kbd></dt><dd>Hold piece</dd></div>
               <div><dt><kbd>Space</kbd></dt><dd>Hard drop</dd></div>
+              <div><dt><kbd>ESC</kbd></dt><dd>Pause</dd></div>
               <div><dt><kbd>R</kbd></dt><dd>Restart</dd></div>
             </dl>
             <p>WASD works too.</p>
