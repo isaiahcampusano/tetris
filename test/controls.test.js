@@ -18,12 +18,13 @@ class FakeEventTarget {
     }
   }
 
-  dispatch(type, key, code = "", repeat = false) {
+  dispatch(type, key, code = "", repeat = false, eventTarget) {
     let prevented = false;
     this.listeners.get(type)({
       key,
       code,
       repeat,
+      target: eventTarget,
       preventDefault() {
         prevented = true;
       },
@@ -31,12 +32,12 @@ class FakeEventTarget {
     return prevented;
   }
 
-  press(key, code = "", repeat = false) {
-    return this.dispatch("keydown", key, code, repeat);
+  press(key, code = "", repeat = false, eventTarget) {
+    return this.dispatch("keydown", key, code, repeat, eventTarget);
   }
 
-  release(key, code = "") {
-    return this.dispatch("keyup", key, code);
+  release(key, code = "", eventTarget) {
+    return this.dispatch("keyup", key, code, false, eventTarget);
   }
 }
 
@@ -141,4 +142,21 @@ test("gameplay keydown actions are ignored while paused but Escape can resume", 
   assert.equal(target.press(" ", "Space"), true);
   assert.equal(target.press("Escape"), true);
   assert.deepEqual(calls, [["pause"]]);
+});
+
+test("game controls do not intercept keys from text-entry elements", () => {
+  const calls = [];
+  const target = new FakeEventTarget();
+  setupControls(createActions(calls), target);
+
+  const input = { tagName: "INPUT", isContentEditable: false };
+  const textarea = { tagName: "TEXTAREA", isContentEditable: false };
+  const editable = { tagName: "DIV", isContentEditable: true };
+
+  assert.equal(target.press("w", "", false, input), false);
+  assert.equal(target.release("a", "", input), false);
+  assert.equal(target.press("c", "", false, textarea), false);
+  assert.equal(target.press("r", "", false, editable), false);
+  assert.equal(target.press(" ", "Space", false, input), false);
+  assert.deepEqual(calls, []);
 });
